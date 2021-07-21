@@ -1,12 +1,12 @@
 import React, {useRef, useState} from 'react'
-import Image from 'next/image'
-import {Grid, GridItem, Box} from '@chakra-ui/react'
-import {piece_images, Piece} from './pieces'
+import {Grid, GridItem} from '@chakra-ui/react'
+import {piece_images, getMoves, getAttacks} from './pieces'
 import Tile from './tile'
+import {BoardState, Piece, ToMove} from './board-types'
 import {testpos3} from './test-positions'
+import {readFEN} from './fen'
 
 const startFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-const FENregex = new RegExp("((([prnbqkPRNBQK12345678]*/){7})([prnbqkPRNBQK12345678]*)) (w|b) ((K?Q?k?q?)|\\-) (([abcdefgh][36])|\\-) (\\d*) (\\d*)")
 
 const board_columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const board_rows = ['1', '2', '3', '4', '5', '6', '7', '8']
@@ -27,8 +27,11 @@ const board : Piece[] = Array(64).fill('_')
 const ChessBoard = () => {
     const chessBoardRef = useRef<HTMLDivElement>(null)
     const [boardState, setBoardState] = useState<BoardState>(readFEN(startFEN))
+    
 
     let activePiece: HTMLElement | null = null
+    let originTile: HTMLElement | null = null
+    let endTile: HTMLElement | null = null
     let originIndex: number | null = null
     let targetIndex: number | null = null
 
@@ -38,12 +41,35 @@ const ChessBoard = () => {
         if(elem.classList.contains("chess-piece") && chessboard){
             const [gridX, gridY] = getTargetBoardCoordinate(e, chessboard)
             originIndex = coordinateToIndex(gridX, gridY)
+            const piece = boardState.pieces[originIndex]
+
+            const moves = getMoves(piece, originIndex, boardState)
+            const attacks = getAttacks(piece, originIndex, boardState)
+
             const x = e.clientX - 40
             const y = e.clientY - 40
             elem.style.position = "absolute"
             elem.style.left = `${x}px`
             elem.style.top = `${y}px`
             activePiece = elem
+
+            //Move visualization
+
+            //Tile effects
+            originTile = getBoardElementByIndex(originIndex, chessboard)
+            if (originTile){
+                originTile.style.backgroundColor = 'blue'
+            }
+            
+            for (let i of moves) {
+                const effectTile = getBoardElementByIndex(i, chessboard)
+                effectTile.style.backgroundColor = 'aqua'
+            }
+            
+            for (let i of attacks) {
+                const effectTile = getBoardElementByIndex(i, chessboard)
+                effectTile.style.backgroundColor = 'red'
+            }
         }
     }
 
@@ -80,8 +106,11 @@ const ChessBoard = () => {
             const [gridX, gridY] = getTargetBoardCoordinate(e, chessboard)
             targetIndex = coordinateToIndex(gridX, gridY)
             console.log('origin:', originIndex, 'target:', targetIndex)
+
             if(originIndex != null && targetIndex != null) {
-                if(originIndex != targetIndex) {
+                const piece = boardState.pieces[originIndex]
+                const moves = getMoves(piece, originIndex, boardState)
+                if(originIndex != targetIndex && moves.includes(targetIndex)) {
                     let pieces = boardState.pieces
                     const piece = pieces[originIndex]
                     console.log(piece, 'from', originIndex, 'to', targetIndex)
@@ -91,6 +120,20 @@ const ChessBoard = () => {
                         ...boardState,
                         pieces : pieces
                     })
+                    if(originTile) {
+                        originTile = null
+                    }
+
+                    //Tile effects
+                    //Clear all previous board-effects
+                    clearEffectLayer(chessboard)
+                    //color end-tile
+                    endTile = getBoardElementByIndex(targetIndex, chessboard)
+                    if (endTile) {
+                        endTile.style.backgroundColor = 'yellow'
+                    }
+
+                    //Reset active piece
                     activePiece = null
                     originIndex = null
                     targetIndex = null
@@ -102,10 +145,24 @@ const ChessBoard = () => {
                     activePiece = null
                     originIndex = null
                     targetIndex = null
-                }
-            }
 
-            activePiece = null
+                    //Tile effects
+                    //Clear all previous board-effects
+                    clearEffectLayer(chessboard)
+
+                }
+            } else {
+                console.log('abort move')
+                activePiece.style.position = ''
+                activePiece.style.left = ''
+                activePiece.style.top = ''
+                activePiece = null
+                originIndex = null
+                targetIndex = null
+                //Tile effects
+                //Clear all previous board-effects
+                clearEffectLayer(chessboard)
+        }
         }
     }
 
@@ -126,8 +183,7 @@ const ChessBoard = () => {
     )
 }
 
-//Generate list of tiles to be displayed
-//Generates from top to bottom of the chessboard
+//Generates a list of tiles as HTMLElements based on boardState
 const generate_tiles = (boardState : BoardState) => {
     const pieces = boardState.pieces
     let tiles = []
@@ -150,40 +206,6 @@ const generate_tiles = (boardState : BoardState) => {
     return tiles
 }
 
-const readFEN = (fen : string) : BoardState => {
-    if(!isValidFEN(fen)) {
-        throw new Error('Invalid FEN string')
-    }
-    const board : Piece[] = []
-    const FEN = fen.split(" ")
-    
-    const rows = FEN[0].split("/")
-    let pieces: Piece[] = []
-    for (var row of rows) {
-        for (var v of row) {
-            if(isNaN(Number(v))){
-                pieces.push(v as Piece)
-            } else {
-                for(var i = 0; i < Number(v); i++) {
-                    pieces.push('_')
-                }
-            }
-        }
-    }
-    return {
-        pieces : pieces,
-        toMove : FEN[1],
-        castleOpertunity : FEN[2],
-        enpessant : FEN[3],
-        halfmove : parseInt(FEN[4]),
-        fullmove : parseInt(FEN[5])
-    }
-}
-
-const isValidFEN = (fen : string) : boolean => {
-    return FENregex.test(fen)
-}
-
 const getTargetBoardCoordinate = (e : React.MouseEvent, chessboard: HTMLDivElement) => {
     let x = e.clientX - chessboard.offsetLeft
     let y = e.clientY - chessboard.offsetTop
@@ -202,17 +224,23 @@ const getTargetBoardCoordinate = (e : React.MouseEvent, chessboard: HTMLDivEleme
     return [gridX, gridY]
 } 
 
-const coordinateToIndex = (x : number, y : number) : number => {
-    return x + (y * 8)
+const getBoardElementByIndex = (index : number, chessboard : HTMLDivElement) => {
+    const element = chessboard.children[index].firstChild?.lastChild as HTMLElement
+    console.log(element)
+    return element
 }
 
-type BoardState = {
-    pieces : string[],
-    toMove: string,
-    castleOpertunity : string,
-    enpessant : string,
-    halfmove: number,
-    fullmove: number
+const clearEffectLayer = (chessboard : HTMLDivElement) => {
+    chessboard.childNodes.forEach(node => {
+        const effectLayer = node.firstChild?.lastChild as HTMLElement
+        if (effectLayer) {
+            effectLayer.style.backgroundColor = ''
+        }
+    })
+}
+
+const coordinateToIndex = (x : number, y : number) : number => {
+    return x + (y * 8)
 }
 
 export default ChessBoard

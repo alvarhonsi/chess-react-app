@@ -35,6 +35,18 @@ const Tile = ({number, board_colors, image} : Props) => {
             }}
         >
         </Box>}
+        <Box
+        className = 'effect-layer'
+        display="flex" 
+        alignItems="center"
+        justifyContent="center"
+        w="100%"
+        h="100%"
+        //borderRadius="45px"
+        overflowX="visible"
+        overflowY="visible"
+        >
+        </Box>
     </Box>
     )
 }
