@@ -1,4 +1,4 @@
-import {BoardState, Piece} from './board-types'
+import {BoardState, Piece, ToMove} from './chessboard/board-types'
 
 
 const FENregex = new RegExp("((([prnbqkPRNBQK12345678]*/){7})([prnbqkPRNBQK12345678]*)) (w|b) ((K?Q?k?q?)|\\-) (([abcdefgh][36])|\\-) (\\d*) (\\d*)")
@@ -25,7 +25,7 @@ export const readFEN = (fen : string) : BoardState => {
     }
     return {
         pieces : pieces,
-        toMove : FEN[1],
+        toMove : FEN[1] as ToMove,
         castleOpertunity : FEN[2],
         enpessant : FEN[3],
         halfmove : parseInt(FEN[4]),
