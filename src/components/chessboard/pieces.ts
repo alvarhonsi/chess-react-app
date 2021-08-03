@@ -1,4 +1,5 @@
-import {BoardState, Piece, ToMove} from './board-types'
+import {BoardPosition, BoardState, Piece, ToMove} from './board-types'
+import { boardPositionToIndex } from './utils'
 
 export const piece_images = {
     '_' : '',
@@ -14,6 +15,47 @@ export const piece_images = {
     'r' : '/chess-pieces/rook_b.png',
     'k' : '/chess-pieces/king_b.png',
     'q' : '/chess-pieces/queen_b.png',
+}
+
+export const pieceIsMovable = (piece : Piece, toMove : ToMove) : boolean => {
+    if(piece === '_') {
+        return false
+    }
+    const pieceColor = piece === piece.toUpperCase() ? 'w' : 'b'
+    return pieceColor === toMove
+}
+
+export const doMove = (origin : number, target : number, boardState : BoardState) : BoardState => {
+    let {pieces, toMove, castleAvailability, enpessant, halfmove, fullmove} = boardState
+    const piece = pieces[origin]
+
+    //pawnmove
+    if(piece.toUpperCase() === 'P') {
+        if(target === boardPositionToIndex(enpessant)){
+            //target pawn is on black side
+            if(target < 24) {
+                //remove attacked pawn
+                pieces[target+8] = '_'
+            } else {
+                //target must be on white side
+                pieces[target-8] = '_'
+            }
+        }
+    }
+
+    //move piece to target
+    pieces[origin] = '_'
+    pieces[target] = piece
+    toMove = toMove === 'w' ? 'b' : 'w'
+
+    return {
+        pieces : pieces,
+        toMove : toMove,
+        castleAvailability : castleAvailability,
+        enpessant : enpessant,
+        halfmove : halfmove,
+        fullmove : fullmove,
+    }
 }
 
 export const getMoves = (piece : string, index: number, boardState : BoardState) : number[] => {
@@ -60,6 +102,8 @@ export const getAttacks = (piece : string, index: number, boardState : BoardStat
     for (let move of moves) {
         if (isCapturable(toMove, boardState.pieces[move])) {
             attacks.push(move)
+        } else if(piece.toUpperCase() === 'P' && move === boardPositionToIndex(boardState.enpessant)) {
+            attacks.push(move)
         }
     }
     return attacks
@@ -71,8 +115,10 @@ export const getAttacks = (piece : string, index: number, boardState : BoardStat
 // left : -1
 // right : +1
 
-const getPawnMoves = (toMove : ToMove, index : number, pieces: Piece[], enpassant : string) => {
+const getPawnMoves = (toMove : ToMove, index : number, pieces: Piece[], enpassant : BoardPosition) => {
     //pawns can move one or two tiles up or down
+    console.log(enpassant)
+    console.log(boardPositionToIndex(enpassant))
     const piece = pieces[index]
     let dir = 0
     if(toMove == 'w') {
@@ -105,19 +151,27 @@ const getPawnMoves = (toMove : ToMove, index : number, pieces: Piece[], enpassan
     const left = index + dir - 1
     const right = index + dir + 1
                                     //piece is not on left edge of the board
-    if (indexInsideBounds(left) && pieces[left] != '_' && index % 8 != 0) {
+    if (indexInsideBounds(left) && index % 8 != 0 && (pieces[left] != '_')) {
         if(isCapturable(toMove, pieces[left])) {
             moves.push(left)
         }
     }
                                     //piece is not on right edge of the board
-    if (indexInsideBounds(right) && pieces[right] != '_' && (index + 1) % 8 != 0) {
+    if (indexInsideBounds(right) && (index + 1) % 8 != 0 && (pieces[right] != '_')) {
         if(isCapturable(toMove, pieces[right])) {
             moves.push(right)
         }
     }
 
     //enpassant
+    if (indexInsideBounds(left) && index % 8 != 0 && pieces[left] === '_' && left === boardPositionToIndex(enpassant)) {
+        moves.push(left)
+    }
+                                    //piece is not on right edge of the board
+    if (indexInsideBounds(right) && (index + 1) % 8 != 0 && pieces[right] === '_' && right === boardPositionToIndex(enpassant)) {
+        moves.push(right)
+    }
+
 
     return moves
 }

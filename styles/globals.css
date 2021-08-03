@@ -25,9 +25,6 @@ a {
 }
 
 .attackTile {
-  width: 80%;
-  height: 80%;
-  border-radius: 20%;
   background-color: red;
   cursor: pointer;
 }

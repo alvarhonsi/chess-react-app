@@ -3,10 +3,11 @@ import {GridItem, Box} from '@chakra-ui/react'
 
 interface PieceProps {
     index : number,
-    image? : string
+    image? : string,
+    selectable : boolean,
 }
 
-export const BoardPiece = ({index, image} : PieceProps) => {
+export const BoardPiece = ({index, image, selectable} : PieceProps) => {
     return (
     <GridItem
         display="flex" 
@@ -24,9 +25,9 @@ export const BoardPiece = ({index, image} : PieceProps) => {
             bgRepeat="no-repeat"
             bgPosition="center"
             className="chess-piece"
-            _hover={{
+            _hover={selectable ? {
                 cursor: 'pointer'
-            }}
+            } : {}}
         >
         </Box>}
     </GridItem>

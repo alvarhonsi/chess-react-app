@@ -1,10 +1,10 @@
 import React, {useRef, useState} from 'react'
 import {Grid, GridItem, Box, Text} from '@chakra-ui/react'
-import {piece_images, getMoves, getAttacks} from './pieces'
+import {piece_images, getMoves, getAttacks, pieceIsMovable} from './pieces'
 import {BoardTile, BoardPiece} from './board-tiles'
 import {BoardState, Piece, ToMove} from './board-types'
-import {testpos3} from '../test-positions'
-import {boardPositionToIndex} from './utils'
+import {enpassant_white} from '../test-positions'
+import {boardPositionToIndex, indexToBoardPosition} from './utils'
 import {readFEN} from '../fen'
 
 const startFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -26,14 +26,13 @@ const board : Piece[] = Array(64).fill('_')
 
 
 const ChessBoard = () => {
-    console.log(boardPositionToIndex("a2"))
     const chessBoardRef = useRef<HTMLDivElement>(null)
     const getPieceLayer = () => chessBoardRef.current?.firstChild?.lastChild as HTMLDivElement
     const getBoardLayer = () => chessBoardRef.current?.firstChild?.firstChild as HTMLDivElement
 
-    const [boardState, setBoardState] = useState<BoardState>(readFEN(startFEN))
+    const [boardState, setBoardState] = useState<BoardState>(readFEN(enpassant_white))
 
-    
+    console.log(boardState.toMove)
     
 
     let activePiece: HTMLElement | null = null
@@ -43,15 +42,11 @@ const ChessBoard = () => {
     let targetIndex: number | null = null
 
     const registerMove = (originIndex: number, targetIndex: number) => {
-        let pieces = boardState.pieces
-        const piece = pieces[originIndex]
-        console.log(piece, 'from', originIndex, 'to', targetIndex)
-        pieces[originIndex] = '_'
-        pieces[targetIndex] = piece
-        setBoardState({
-            ...boardState,
-            pieces : pieces
-        })
+        const piece = boardState.pieces[originIndex]
+        console.log(piece, 'from', indexToBoardPosition(originIndex) , 'to', indexToBoardPosition(targetIndex))
+
+        setBoardState(doMove(originIndex, targetIndex, boardState))
+
         if(originTile) {
             originTile = null
         }
@@ -65,9 +60,14 @@ const ChessBoard = () => {
         if(elem.classList.contains("chess-piece") && originIndex === null){
             //A new piece is to be set as the active piece
             originIndex = getPieceIndex(elem)
-            if(originIndex) {
-                activePiece = elem
+            if(originIndex != null) {
                 const piece = boardState.pieces[originIndex]
+                if(!pieceIsMovable(piece, boardState.toMove)){
+                    originIndex = null
+                    return
+                }
+
+                activePiece = elem
                 const moves = getMoves(piece, originIndex, boardState)
                 const attacks = getAttacks(piece, originIndex, boardState)
 
@@ -200,6 +200,7 @@ const ChessBoard = () => {
                 {board_rows.map(row => {
                     return (
                         <Text
+                            key={row}
                             textAlign='end'
                             textColor='white'
                             fontSize='25px'
@@ -219,20 +220,60 @@ const ChessBoard = () => {
                 left={0}
                 bottom={'-35px'}
             >
-                {board_columns.map(row => {
+                {board_columns.map(column => {
                     return (
                         <Text
+                            key={column}
                             textAlign='center' 
                             textColor='white'
                             fontSize='25px'
                         >
-                            {row}
+                            {column}
                         </Text>
                     )
                 })}
             </Grid>
         </Box>
     )
+}
+
+const doMove = (origin : number, target : number, boardState : BoardState) : BoardState => {
+    let {pieces, toMove, castleAvailability, enpessant, halfmove, fullmove} = boardState
+    const piece = pieces[origin]
+
+    //Check special condition moves
+    //pawn
+    if(piece === 'P') {
+        if(target === boardPositionToIndex(enpessant)){
+            //enpessant
+            pieces[target+8] = '_'
+        } else if (target === origin - 16) {
+            //pawn has moved two squares, making it available for enpessant capture
+            enpessant = indexToBoardPosition(target + 8)
+        }
+    } else if (piece === 'p') {
+        if(target === boardPositionToIndex(enpessant)){
+            //enpessant
+            pieces[target-8] = '_'
+        } else if (target === origin + 16) {
+            //pawn has moved two squares, making it available for enpessant capture
+            enpessant = indexToBoardPosition(target - 8)
+        } 
+    }
+
+    //move piece to target
+    pieces[origin] = '_'
+    pieces[target] = piece
+    toMove = toMove === 'w' ? 'b' : 'w'
+
+    return {
+        pieces : pieces,
+        toMove : toMove,
+        castleAvailability : castleAvailability,
+        enpessant : enpessant,
+        halfmove : halfmove,
+        fullmove : fullmove,
+    }
 }
 
 const generateBoard = () => {
@@ -242,7 +283,7 @@ const generateBoard = () => {
         for(let i = 0; i < board_columns.length; i++) {
             const num = i + j;
             tiles.push(
-                <BoardTile number={num} board_colors={board_colors} key={count}/>
+                <BoardTile key={count} number={num} board_colors={board_colors}/>
             )
             count++
         }
@@ -260,7 +301,7 @@ const generatePieceLayer = (boardState : BoardState) => {
         for(let i = 0; i < board_columns.length; i++) {
             const piece = (pieces[count] as Piece)
             tiles.push(
-                <BoardPiece key={count} index={count} image={piece_images[piece]}/>
+                <BoardPiece key={count} selectable={pieceIsMovable(piece, boardState.toMove)} index={count} image={piece_images[piece]}/>
             )
             count++
         }

@@ -1,12 +1,9 @@
 import { BoardPosition, Column, Row } from "./board-types"
 
-export const coordinateToIndex = (x : number, y : number) : number => {
-    return x + (y * 8)
-}
+const board_columns: Column[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+const board_rows: Row[] = ['8', '7', '6', '5', '4', '3', '2', '1']
 
 export const boardPositionToIndex = (pos : BoardPosition) : number => {
-    const board_columns: Column[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    const board_rows: Row[] = ['8', '7', '6', '5', '4', '3', '2', '1']
     const column = pos[0] as Column
     const row = pos[1] as Row
 
@@ -17,4 +14,15 @@ export const boardPositionToIndex = (pos : BoardPosition) : number => {
     } else {
         return -1
     }
+}
+
+export const indexToBoardPosition = (index : number) : BoardPosition => {
+    const x = Math.floor(index/8);
+    const y = index % 8;
+
+    return `${board_columns[y]}${board_rows[x]}`
+}
+
+export const coordinateToIndex = (x : number, y : number) : number => {
+    return x + (y * 8)
 }
