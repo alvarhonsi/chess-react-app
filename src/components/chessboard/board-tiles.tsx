@@ -19,8 +19,8 @@ export const BoardPiece = ({index, image, selectable} : PieceProps) => {
         index={index}
     >
         {image && <Box
-            w="70px"
-            h="70px"
+            w="100%"
+            h="100%"
             backgroundImage={image}
             bgRepeat="no-repeat"
             bgPosition="center"
@@ -41,9 +41,10 @@ interface TileProps {
         primary : string,
         secondary : string
     }
+    tileEffect : Effect
 }
 
-export const BoardTile = ({number, board_colors} : TileProps) => {
+export const BoardTile = ({number, board_colors, tileEffect} : TileProps) => {
     return (
     <GridItem
         bg={number % 2 === 0 ? board_colors.primary : board_colors.secondary}
@@ -53,11 +54,71 @@ export const BoardTile = ({number, board_colors} : TileProps) => {
         w="100%"
         h="100%"
     >
-        <Box
-            className='effect-tile'
-        >
-
-        </Box>
+        {TileEffect(tileEffect)}
     </GridItem>
     )
+}
+
+export enum Effect {
+    None,
+    Origin,
+    End,
+    Movable,
+    Attack,
+    Check,
+}
+
+const TileEffect = (effect : Effect) => {
+    let styleProps: any = {}
+    switch (effect) {
+        case Effect.Origin:
+            styleProps = {
+                bg : 'yellow.200',
+                w: '100%',
+                h: '100%',
+                cursor: 'pointer',
+                opacity: 0.7
+            }
+            break
+        case Effect.End:
+            styleProps = {
+                bg : 'yellow.400',
+                w: '100%',
+                h: '100%',
+                cursor: 'pointer',
+                opacity: 0.7
+            }
+            break
+        case Effect.Movable:
+            styleProps = {
+                bg : 'blue.200',
+                w: '100%',
+                h: '100%',
+                cursor: 'pointer',
+                opacity: 0.7
+            }
+            break
+        case Effect.Attack:
+            styleProps = {
+                bg : 'red.200',
+                w: '100%',
+                h: '100%',
+                cursor: 'pointer',
+                opacity: 0.7
+            }
+            break
+        case Effect.Check:
+            styleProps = {
+                bg : 'red.400',
+                w: '100%',
+                h: '100%',
+                cursor: 'pointer',
+                opacity: 0.7
+            }
+            break
+        default:
+            break
+    }
+
+    return <Box className='tile-effect' {...styleProps}> </Box>
 }

@@ -1,4 +1,4 @@
-import { BoardPosition, Column, Row } from "./board-types"
+import { BoardPosition, Column, Row, ToMove } from "./board-types"
 
 const board_columns: Column[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const board_rows: Row[] = ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -25,4 +25,8 @@ export const indexToBoardPosition = (index : number) : BoardPosition => {
 
 export const coordinateToIndex = (x : number, y : number) : number => {
     return x + (y * 8)
+}
+
+export const nextToMove = (toMove : ToMove) : ToMove => {
+    return toMove === 'w' ? 'b' : 'w'
 }

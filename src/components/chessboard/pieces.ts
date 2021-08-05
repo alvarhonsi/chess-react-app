@@ -1,5 +1,5 @@
-import {BoardPosition, BoardState, Piece, ToMove} from './board-types'
-import { boardPositionToIndex } from './utils'
+import {BoardPosition, BoardState, CastleAvailability, Piece, ToMove} from './board-types'
+import { boardPositionToIndex, nextToMove } from './utils'
 
 export const piece_images = {
     '_' : '',
@@ -25,42 +25,8 @@ export const pieceIsMovable = (piece : Piece, toMove : ToMove) : boolean => {
     return pieceColor === toMove
 }
 
-export const doMove = (origin : number, target : number, boardState : BoardState) : BoardState => {
-    let {pieces, toMove, castleAvailability, enpessant, halfmove, fullmove} = boardState
-    const piece = pieces[origin]
-
-    //pawnmove
-    if(piece.toUpperCase() === 'P') {
-        if(target === boardPositionToIndex(enpessant)){
-            //target pawn is on black side
-            if(target < 24) {
-                //remove attacked pawn
-                pieces[target+8] = '_'
-            } else {
-                //target must be on white side
-                pieces[target-8] = '_'
-            }
-        }
-    }
-
-    //move piece to target
-    pieces[origin] = '_'
-    pieces[target] = piece
-    toMove = toMove === 'w' ? 'b' : 'w'
-
-    return {
-        pieces : pieces,
-        toMove : toMove,
-        castleAvailability : castleAvailability,
-        enpessant : enpessant,
-        halfmove : halfmove,
-        fullmove : fullmove,
-    }
-}
-
 export const getMoves = (piece : string, index: number, boardState : BoardState) : number[] => {
 
-    //pawns move differently if black or white
     switch (piece) {
         case '_':
             return []
@@ -81,9 +47,9 @@ export const getMoves = (piece : string, index: number, boardState : BoardState)
         case 'r':
             return getRookMoves('b', index, boardState.pieces)
         case 'K':
-            return getKingMoves('w', index, boardState.pieces)
+            return getKingMoves('w', index, boardState)
         case 'k':
-            return getKingMoves('b', index, boardState.pieces)
+            return getKingMoves('b', index, boardState)
         case 'Q':
             return getQueenMoves('w', index, boardState.pieces)
         case 'q':
@@ -95,18 +61,74 @@ export const getMoves = (piece : string, index: number, boardState : BoardState)
     }
 }
 
-export const getAttacks = (piece : string, index: number, boardState : BoardState): number[] => {
-    const toMove = piece === piece.toUpperCase() ? 'w' : 'b'
-    const attacks: number[] = []
-    const moves = getMoves(piece, index, boardState)
-    for (let move of moves) {
-        if (isCapturable(toMove, boardState.pieces[move])) {
-            attacks.push(move)
-        } else if(piece.toUpperCase() === 'P' && move === boardPositionToIndex(boardState.enpessant)) {
-            attacks.push(move)
+export const isInCheck = (toMove : ToMove, boardState : BoardState) : boolean => {
+    const enemy = nextToMove(toMove)
+    let attacks = getAllAttacks(boardState)[enemy] //Dont include kings in search
+
+    for (let attack of attacks) {
+        if (toMove === 'w') {
+            if (boardState.pieces[attack] === 'K') {
+                return true
+            }
+        } else {
+            if (boardState.pieces[attack] === 'k') {
+                return true
+            }
         }
     }
-    return attacks
+    return false 
+}
+
+export const getKingPos = (toMove : ToMove, boardState : BoardState) : number => {
+    for (let i = 0; i < boardState.pieces.length; i++) {
+        if (toMove === 'w' && boardState.pieces[i] === 'K') {
+            return i
+        } else if (toMove === 'b' && boardState.pieces[i] === 'k') {
+            return i
+        }
+    }
+    return -1
+}
+
+export const getAttacks = (piece : string, index: number, boardState : BoardState) : [ToMove, number[]] => {
+    switch (piece) {
+        case '_':
+            return ['w', []]
+        //Pawns and kings cannot attack the same way they move
+        case 'P':
+            return ['w', getPawnAttacks('w', index, boardState.pieces)]
+        case 'p':
+            return ['b', getPawnAttacks('b', index, boardState.pieces)]
+        case 'K':
+            return ['w', getKingAttacks('w', index, boardState)]
+        case 'k':
+            return ['b', getKingAttacks('b', index, boardState)]
+        default:
+            const toMove = piece === piece.toUpperCase() ? 'w' : 'b'
+            const attacks: number[] = getMoves(piece, index, boardState)
+            return [toMove, attacks]
+    }
+}
+
+export const getAllAttacks = (boardState : BoardState) => {
+    const pieces = boardState.pieces
+    let attacksWhite : number[] = []
+    let attacksBlack: number[] = []
+    for (let i = 0; i < pieces.length; i++) {
+        if(pieces[i] === '_') {
+            continue
+        }
+        const [team, attacks] = getAttacks(pieces[i], i, boardState)
+        if(team === 'w') {
+            attacksWhite = attacksWhite.concat(attacks)
+        } else {
+            attacksBlack = attacksBlack.concat(attacks)
+        }
+    }
+    return {
+        'w' : Array.from(new Set(attacksWhite)),
+        'b' : Array.from(new Set(attacksBlack))
+    }
 }
 
 //When a pieve moves a tile the indexes changes as follows:
@@ -117,8 +139,6 @@ export const getAttacks = (piece : string, index: number, boardState : BoardStat
 
 const getPawnMoves = (toMove : ToMove, index : number, pieces: Piece[], enpassant : BoardPosition) => {
     //pawns can move one or two tiles up or down
-    console.log(enpassant)
-    console.log(boardPositionToIndex(enpassant))
     const piece = pieces[index]
     let dir = 0
     if(toMove == 'w') {
@@ -174,6 +194,32 @@ const getPawnMoves = (toMove : ToMove, index : number, pieces: Piece[], enpassan
 
 
     return moves
+}
+
+const getPawnAttacks = (toMove : ToMove, index : number, pieces: Piece[]) : number[] => {
+    let dir = 0
+    if(toMove == 'w') {
+        dir = -8
+    } else {
+        dir = 8
+    }
+    let attacks: number[] = []
+    //attacking to the side
+    const left = index + dir - 1
+    const right = index + dir + 1
+                                    //piece is not on left edge of the board
+    if (indexInsideBounds(left) && index % 8 != 0) {
+        if(pieces[left] === '_' || isCapturable(toMove, pieces[left])) {
+            attacks.push(left)
+        }
+    }
+                                    //piece is not on right edge of the board
+    if (indexInsideBounds(right) && (index + 1) % 8 != 0) {
+        if(pieces[right] === '_' || isCapturable(toMove, pieces[right])) {
+            attacks.push(right)
+        }
+    }
+    return attacks
 }
 
 const getKnightMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
@@ -345,7 +391,8 @@ const getRookMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
     return moves
 }
 
-const getKingMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
+const getKingMoves = (toMove: ToMove, index: number, boardState: BoardState) => {
+    const {pieces, castleAvailability} = boardState
     let moves: number[] = []
     
     let possible: number[] = [(index + 8), (index - 8)]
@@ -369,7 +416,7 @@ const getKingMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
     //check possible moves
     for (let index of possible) {
         if (indexInsideBounds(index)){
-            const targetPiece = pieces[index]
+            const targetPiece = boardState.pieces[index]
             if (targetPiece === '_' || isCapturable(toMove, targetPiece)) {
                 moves.push(index)
             }
@@ -378,7 +425,72 @@ const getKingMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
             }
         }
     }
+
+    //check castle availability
+    //King cannot castle if it is in check
+    if(!isInCheck(toMove, boardState)){
+        const enemy = nextToMove(toMove)
+        let attacks = getAllAttacks(boardState)[enemy] //Dont include kings in search
+        if(toMove === 'w') {
+            if(castleAvailability.includes('K') && !attacks.includes(index+1) && !attacks.includes(index+2) && pieces[index + 1] === '_' && pieces[index + 2] === '_') {
+                //kingside
+                moves.push(index + 2)
+            }
+            if (castleAvailability.includes('Q') && !attacks.includes(index-1) && !attacks.includes(index-2) && pieces[index - 1] === '_' && pieces[index - 2] === '_' && pieces[index - 3] === '_'){
+                //queenside
+                moves.push(index - 2)
+            }
+        } else {
+            if(castleAvailability.includes('k') && !attacks.includes(index+1) && !attacks.includes(index+2) && pieces[index + 1] === '_' && pieces[index + 2] === '_') {
+                //kingside
+                moves.push(index + 2)
+            }
+            if (castleAvailability.includes('q') && !attacks.includes(index-1) && !attacks.includes(index-2) && pieces[index - 1] === '_' && pieces[index - 2] === '_' && pieces[index - 3] === '_'){
+                //queenside
+                moves.push(index - 2)
+            }
+        }
+    }
+
     return moves
+}
+
+const getKingAttacks = (toMove: ToMove, index: number, boardState: BoardState) : number[] => {
+    const {pieces, castleAvailability} = boardState
+    let attacks: number[] = []
+    
+    let possible: number[] = [(index + 8), (index - 8)]
+    //left
+    if (index % 8 > 0) {
+        possible = possible.concat([
+            (index - 1),
+            (index - 1) - 8,
+            (index - 1) + 8
+        ])
+    }
+    //right
+    if (index % 8 < 7) {
+        possible = possible.concat([
+            (index + 1),
+            (index + 1) - 8,
+            (index + 1) + 8
+        ])
+    }
+
+    //check possible moves
+    for (let index of possible) {
+        if (indexInsideBounds(index)){
+            const targetPiece = boardState.pieces[index]
+            if (isCapturable(toMove, targetPiece)) {
+                attacks.push(index)
+            }
+            else {
+                continue
+            }
+        }
+    }
+
+    return attacks
 }
 
 const getQueenMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
@@ -390,7 +502,7 @@ const getQueenMoves = (toMove: ToMove, index: number, pieces: Piece[]) => {
     return moves
 }
 
-const isCapturable = (toMove: ToMove, piece: Piece) => {
+export const isCapturable = (toMove: ToMove, piece: Piece) => {
     if (piece === '_') {
         return false
     }

@@ -5,6 +5,10 @@ export type BoardState = {
     enpessant : BoardPosition,
     halfmove: number,
     fullmove: number
+    attackedSquares : {
+        'w' : number[],
+        'b' : number[]
+    }
 }
 
 export type ToMove = 'w' | 'b'

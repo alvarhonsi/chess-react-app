@@ -29,7 +29,11 @@ export const readFEN = (fen : string) : BoardState => {
         castleAvailability : FEN[2] as CastleAvailability,
         enpessant : FEN[3] as BoardPosition,
         halfmove : parseInt(FEN[4]),
-        fullmove : parseInt(FEN[5])
+        fullmove : parseInt(FEN[5]),
+        attackedSquares: {
+            'w' : [],
+            'b' : []
+        }
     }
 }
 
