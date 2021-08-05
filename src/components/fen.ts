@@ -30,10 +30,6 @@ export const readFEN = (fen : string) : BoardState => {
         enpessant : FEN[3] as BoardPosition,
         halfmove : parseInt(FEN[4]),
         fullmove : parseInt(FEN[5]),
-        attackedSquares: {
-            'w' : [],
-            'b' : []
-        }
     }
 }
 

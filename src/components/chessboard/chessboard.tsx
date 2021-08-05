@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react'
-import {Grid, GridItem, Box, Text, effect} from '@chakra-ui/react'
+import {Grid, Flex, Box, Text, HStack} from '@chakra-ui/react'
 import {piece_images, getMoves, getAttacks, pieceIsMovable, isInCheck, isCapturable, getKingPos} from './pieces'
 import {BoardTile, BoardPiece, Effect} from './board-tiles'
 import {BoardState, CastleAvailability, Piece, ToMove} from './board-types'
@@ -16,32 +16,43 @@ const board_colors = {
     primary: 'yellow.500', 
     secondary: 'yellow.700'
 }
-const board_width = [500, null, 1000]
-const board_height = [500, null, 1000]
+const board_width = [400, null, 600, null, 800]
+const board_height = [400, null, 600, null, 800]
 
 
 const ChessBoard = () => {
     const chessBoardRef = useRef<HTMLDivElement>(null)
     const getBoardLayer = () => chessBoardRef.current?.firstChild?.firstChild as HTMLDivElement
 
-    const [boardState, setBoardState] = useState<BoardState>(readFEN(castleAvailability))
+    const [boardState, setBoardState] = useState<BoardState>(readFEN(startFEN))
     const [effectGrid, setEffectGrid] = useState<Effect[]>(new Array<Effect>(64).fill(Effect.None))
     const [origin, setOrigin] = useState<number | null>(null)
-
-    console.log('to Move:', boardState.toMove)
     
     let activePiece: HTMLElement | null = null
 
     const registerMove = (originIndex: number, targetIndex: number) => {
         const piece = boardState.pieces[originIndex]
         console.log(piece, ' from ', indexToBoardPosition(originIndex) , ' to ', indexToBoardPosition(targetIndex))
+        const newState = doMove(originIndex, targetIndex, boardState)
 
-        setBoardState(doMove(originIndex, targetIndex, boardState))
+        setBoardState((boardState) => {
+            return newState
+        })
+
+        //Tile effects
+        //Clear all previous board-effects
+        clearEffects(true, true)
+
+        //color end-tile
+        addEffect(targetIndex, Effect.End)
+
+        if(isInCheck(newState.toMove, newState)) {
+            addEffect(getKingPos(newState.toMove, newState), Effect.Check)
+        }
     }
 
-    const handleClick = (e: React.MouseEvent) => {
-        const boardLayer = getBoardLayer()
-        const chessboard = chessBoardRef.current
+    const handleClick = async (e: React.MouseEvent) => {
+        console.log(boardState)
         const elem = e.target as HTMLElement
 
         if(elem.classList.contains("chess-piece") && origin === null){
@@ -58,7 +69,6 @@ const ChessBoard = () => {
                 const moves = getLegalMoves(piece, originIndex, boardState)
 
                 //Move visualization
-
                 //Tile effects
                 clearEffects()
                 addEffect(originIndex, Effect.Origin)
@@ -73,7 +83,7 @@ const ChessBoard = () => {
             } else {
                 Error("Cannot find origin index of piece")
             }
-        } else {
+        } else if (origin != null) {
             //An active piece is selected
             const targetIndex = getTargetBoardIndex(e)
             console.log('origin:', origin, 'target:', targetIndex)
@@ -86,22 +96,9 @@ const ChessBoard = () => {
                 if(origin != targetIndex && legalMoves.length > 0 && legalMoves.includes(targetIndex)) {
                     //Move is legal
                     registerMove(origin, targetIndex)
-                    //Tile effects
-                    //Clear all previous board-effects
-                    clearEffects(true, true)
-
-                    //Color tile if king is checked
-                    if (isInCheck(boardState.toMove, boardState)) {
-                        addEffect(getKingPos(boardState.toMove, boardState), Effect.Check)
-                        console.log(boardState.toMove, 'King is in check!')
-                        }
-                    //color end-tile
-                    addEffect(targetIndex, Effect.End)
-
+                    
                     //Reset active piece
                     setOrigin(null)
-
-                    //Tile effects
                 }else {
                     //Move is aborted
                     console.log('abort move')
@@ -120,6 +117,8 @@ const ChessBoard = () => {
                 //Clear all previous board-effects
                 clearEffects()
             }
+        } else {
+            return
         }
     }
 
@@ -136,11 +135,11 @@ const ChessBoard = () => {
             for (let effect of grid) {
                 if (!ends && effect === Effect.End) {
                     newGrid.push(effect)
-                }
-                if (!checks && effect === Effect.Check) {
+                }else if (!checks && effect === Effect.Check) {
                     newGrid.push(effect)
+                }else {
+                    newGrid.push(Effect.None)
                 }
-                newGrid.push(Effect.None)
             }
             return newGrid
         })
@@ -148,41 +147,37 @@ const ChessBoard = () => {
 
     return (
         <Box
-            ref={chessBoardRef}
+            h={board_height}
+            w={board_width}
+            colSpan={4}
+            onMouseDown={e => handleClick(e)}
             position='relative'
+            shadow='xl'
         >
-            <Box
-                h={board_height}
-                w={board_width}
-                onMouseDown={e => handleClick(e)}
-                position='relative'
-                
-            >
-                <Grid
-                    h={board_height}
-                    w={board_width}
-                    templateColumns='repeat(8, 1fr)'
-                    templateRows='repeat(8, 1fr)'
-                    gap={0}
-                >
-                    {effectGrid && generateBoard(effectGrid)}
-                </Grid>
-                <Grid
-                    h={board_height}
-                    w={board_width}
-                    templateColumns='repeat(8, 1fr)'
-                    templateRows='repeat(8, 1fr)'
-                    gap={0}
-                    position='absolute'
-                    top={0}
-                    left={0}
-                >
-                    {boardState && generatePieceLayer( boardState )}
-                </Grid>
-            </Box>
             <Grid
                 h={board_height}
-                w={'40px'}
+                w={board_width}
+                templateColumns='repeat(8, 1fr)'
+                templateRows='repeat(8, 1fr)'
+                gap={0}
+            >
+                {effectGrid && generateBoard(effectGrid)}
+            </Grid>
+            <Grid
+                h={board_height}
+                w={board_width}
+                templateColumns='repeat(8, 1fr)'
+                templateRows='repeat(8, 1fr)'
+                gap={0}
+                position='absolute'
+                top={0}
+                left={0}
+            >
+                {boardState && generatePieceLayer( boardState )}
+            </Grid>
+            <Grid
+                h={board_height}
+                w={'20px'}
                 templateColumns='repeat(1, 1fr)'
                 templateRows='repeat(8, 1fr)'
                 gap={3}
@@ -196,7 +191,7 @@ const ChessBoard = () => {
                             key={row}
                             textAlign='end'
                             textColor='white'
-                            fontSize='25px'
+                            fontSize={['lg', null, 'xl', null, '2xl']}
                             marginY='auto'
                         >
                             {row}
@@ -220,7 +215,7 @@ const ChessBoard = () => {
                             key={column}
                             textAlign='center' 
                             textColor='white'
-                            fontSize={['10px', null, '25px']}
+                            fontSize={['lg', null, 'xl', null, '2xl']}
                         >
                             {column}
                         </Text>

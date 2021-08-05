@@ -47,7 +47,7 @@ interface TileProps {
 export const BoardTile = ({number, board_colors, tileEffect} : TileProps) => {
     return (
     <GridItem
-        bg={number % 2 === 0 ? board_colors.primary : board_colors.secondary}
+        bg={number % 2 === 0 ? board_colors.secondary : board_colors.primary}
         display="flex" 
         alignItems="center"
         justifyContent="center"
@@ -82,20 +82,21 @@ const TileEffect = (effect : Effect) => {
             break
         case Effect.End:
             styleProps = {
-                bg : 'yellow.400',
+                bg : 'yellow.100',
                 w: '100%',
                 h: '100%',
                 cursor: 'pointer',
-                opacity: 0.7
+                opacity: 1
             }
             break
         case Effect.Movable:
             styleProps = {
-                bg : 'blue.200',
-                w: '100%',
-                h: '100%',
+                bg : 'green.800',
+                w: '20%',
+                h: '20%',
+                borderRadius : '50%',
                 cursor: 'pointer',
-                opacity: 0.7
+                opacity: 0.5
             }
             break
         case Effect.Attack:

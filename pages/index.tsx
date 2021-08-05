@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import ChessBoard from '../src/components/chessboard/chessboard'
+import ChessGame from '../src/components/chess-game'
 import {Grid} from '@chakra-ui/react'
 
 export default function Home() {
@@ -14,8 +14,9 @@ export default function Home() {
         h='100vh'
         placeContent='center'
         bg='gray.800'
+        px={'8'}
       >
-        <ChessBoard />
+        <ChessGame />
       </Grid>
     </div>
   )
