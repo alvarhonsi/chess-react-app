@@ -82,7 +82,7 @@ const TileEffect = (effect : Effect) => {
             break
         case Effect.End:
             styleProps = {
-                bg : 'yellow.100',
+                bg : 'yellow.300',
                 w: '100%',
                 h: '100%',
                 cursor: 'pointer',
@@ -101,18 +101,20 @@ const TileEffect = (effect : Effect) => {
             break
         case Effect.Attack:
             styleProps = {
-                bg : 'red.200',
-                w: '100%',
-                h: '100%',
+                bg : 'red.500',
+                w: '50%',
+                h: '50%',
+                borderRadius : '50%',
                 cursor: 'pointer',
                 opacity: 0.7
             }
             break
         case Effect.Check:
             styleProps = {
-                bg : 'red.400',
-                w: '100%',
-                h: '100%',
+                bg : 'red.500',
+                w: '70%',
+                h: '70%',
+                borderRadius : '50%',
                 cursor: 'pointer',
                 opacity: 0.7
             }

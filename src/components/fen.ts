@@ -33,6 +33,53 @@ export const readFEN = (fen : string) : BoardState => {
     }
 }
 
+export const generateFEN = (boardState: BoardState) : string => {
+    let FEN = ''
+
+    let row = ''
+    let empty = 0
+    for (let i = 0; i < boardState.pieces.length; i++) {
+        if(i % 8 === 0 && i != 0) {
+            if(empty != 0) {
+                row = row.concat(empty.toString())
+                empty = 0
+            }
+            //new row
+            FEN = FEN.concat(row)
+            FEN = FEN.concat('/')
+            row = ''
+            empty = 0
+        }
+        if(boardState.pieces[i] === '_') {
+            empty += 1
+        } else {
+            if(empty != 0) {
+                row = row.concat(empty.toString())
+                empty = 0
+            }
+            row = row.concat(boardState.pieces[i])
+        }
+    }
+    //last row
+    if(empty != 0) {
+        row = row.concat(empty.toString())
+    }
+    FEN = FEN.concat(row)
+
+    //toMove
+    FEN = FEN.concat(` ${boardState.toMove}`)
+    //CastleAvailability
+    FEN = FEN.concat(` ${boardState.castleAvailability}`)
+    //Enpessant
+    FEN = FEN.concat(` ${boardState.enpessant}`)
+    FEN = FEN.concat(` ${boardState.halfmove.toString()}`)
+    FEN = FEN.concat(` ${boardState.fullmove.toString()}`)
+
+    console.log(FEN)
+
+    return FEN
+}
+
 export const isValidFEN = (fen : string) : boolean => {
     return FENregex.test(fen)
 }
