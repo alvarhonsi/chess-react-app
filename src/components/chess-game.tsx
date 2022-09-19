@@ -171,15 +171,15 @@ const ChessGame = () => {
                 ml={[15, null, null, 20]}
                 shadow='xl'
             >
-                <VStack border='2px' justify='start'>
-                    <Flex w='100%' p='0' border='2px' wrap='wrap'onKeyDown={e => onKeyDown(e)}>
+                <VStack justify='start'>
+                    <Flex w='100%' p='0' wrap='wrap'onKeyDown={e => onKeyDown(e)}>
                         {movesList.map((move) => {
                             return (
                             <Button 
                                 key={move[2]}
                                 my={1} 
                                 mx={0.5} 
-                                colorScheme={'whiteAlpha'} 
+                                colorScheme={'white'} 
                                 variant={'link'} 
                                 onClick={ () => {
                                         clearEffects(true, true)
