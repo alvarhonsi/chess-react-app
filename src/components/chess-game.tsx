@@ -212,7 +212,6 @@ const ChessGame = () => {
                   key={move[2]}
                   my={1}
                   mx={0.5}
-                  colorScheme={"white"}
                   variant={"link"}
                   onClick={() => {
                     clearEffects(true, true);
